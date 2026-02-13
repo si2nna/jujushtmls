@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SsinTube - JUJU_</title>
+    <style>
+        /* [기본 스타일] */
+        :root {
+            --bg-color: #0f0f0f;
+            --text-main: #ffffff;
+            --text-sub: #aaaaaa;
+            --highlight: #3ea6ff;
+            --border: #2d2d2d;
+            --like-color: #3ea6ff;
+            --dislike-color: #ff5f56;
+            --trande-purple: #7000ff;
+        }
+        
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; background: #000; font-family: 'Pretendard', sans-serif; color: var(--text-main); display: flex; justify-content: center; min-height: 100vh; user-select: none; }
+
+        /* 앱 컨테이너 */
+        #app-container {
+            width: 100%; max-width: 480px;
+            background: var(--bg-color);
+            position: relative;
+            display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        /* 1. 헤더 & 팝업 메뉴 */
+        .app-header {
+            height: 50px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; background: rgba(15, 15, 15, 0.95);
+            border-bottom: 1px solid var(--border); z-index: 100; position: relative;
+        }
+        .logo { font-size: 1.1rem; font-weight: bold; display: flex; align-items: center; gap: 4px; letter-spacing: -1px; }
+        .logo span { color: var(--highlight); font-size: 1.4rem; }
+        
+        .icons { display: flex; gap: 18px; font-size: 1.2rem; align-items: center; }
+        .icon-btn { cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; }
+        
+        .badge {
+            position: absolute; top: -5px; right: -5px;
+            background: #ff0000; color: white;
+            font-size: 10px; font-weight: bold;
+            padding: 2px 5px; border-radius: 10px;
+            border: 1px solid #fff;
+        }
+
+        .dropdown-menu {
+            position: absolute; top: 50px; right: 0; width: 300px;
+            background: #1f1f1f; border: 1px solid #333;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            display: none; z-index: 200;
+        }
+        .dd-item { padding: 12px 16px; border-bottom: 1px solid #333; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .dd-item:hover { background: #333; }
+        .dd-time { font-size: 0.75rem; color: #888; margin-left: auto; }
+
+        /* 2. 채널 정보 */
+        .channel-info-area { padding: 16px; display: flex; align-items: center; gap: 16px; }
+        .profile-pic { width: 70px; height: 70px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); flex-shrink: 0; cursor: pointer; }
+        .profile-pic img { width: 100%; height: 100%; object-fit: cover; }
+        .info-text { flex: 1; }
+        .ch-name { font-size: 1.4rem; font-weight: bold; margin-bottom: 4px; }
+        .ch-sub { font-size: 0.85rem; color: var(--text-sub); }
+        .more-btn { font-size: 0.8rem; color: var(--text-sub); margin-top: 4px; cursor: pointer; }
+
+        /* 구독 버튼 */
+        .action-bar { padding: 0 16px 16px 16px; display: flex; gap: 10px; }
+        .btn-sub { flex: 1; border: none; padding: 10px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+        .btn-sub.active { background: #333; color: #aaa; }
+        .btn-sub.inactive { background: white; color: black; }
+        .btn-join { flex: 1; background: #222; color: var(--text-main); border: 1px solid #333; padding: 10px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; cursor: pointer; }
+
+        /* 3. 탭 메뉴 */
+        .tabs-wrapper { background: var(--bg-color); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        .tabs { display: flex; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab-item { padding: 14px 20px; font-size: 1rem; font-weight: bold; color: var(--text-sub); cursor: pointer; text-transform: uppercase; border-bottom: 3px solid transparent; }
+        .tab-item.active { color: var(--text-main); border-bottom: 3px solid var(--text-main); }
+        .tab-item.secret { color: #d8b4fe; } 
+        .tab-item.secret.active { border-bottom: 3px solid #d8b4fe; }
+
+        /* 4. 컨텐츠 뷰 */
+        .content-view { flex: 1; overflow-y: auto; padding-bottom: 20px; }
+        
+        /* [동영상] */
+        .video-item { margin-bottom: 20px; cursor: pointer; }
+        .thumb-box { width: 100%; aspect-ratio: 16/9; background: #222; position: relative; overflow: hidden; }
+        .thumb-box img { width: 100%; height: 100%; object-fit: cover; }
+        .time-badge { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .vid-info { padding: 12px 16px; display: flex; gap: 12px; }
+        .vid-info img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+        .vid-meta h3 { margin: 0 0 4px 0; font-size: 0.95rem; line-height: 1.3; }
+        .vid-meta p { margin: 0; font-size: 0.8rem; color: var(--text-sub); }
+
+        /* [라이브 준비중] */
+        .live-bg-container {
+            width: 100%; height: 400px; position: relative; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; background: #000; margin-top: 20px;
+        }
+        .live-bg-img {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://tra2.ssina.uk/6.webp') center/cover;
+            opacity: 0.3; filter: blur(3px); transform: scale(1.1);
+        }
+        .live-content { position: relative; z-index: 2; text-align: center; }
+
+        /* [커뮤니티] */
+        .post-card { background: #1a1a1a; margin: 10px 0; padding: 16px; border-bottom: 1px solid #333; }
+        .post-header { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .post-header img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+        .post-text { font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px; white-space: pre-line; }
+        .post-actions { display: flex; gap: 20px; color: var(--text-sub); font-size: 0.9rem; align-items: center; border-top: 1px solid #333; padding-top: 10px;}
+        .act-btn { cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s; }
+        .act-btn.liked { color: var(--highlight); }
+        .act-btn.disliked { color: var(--dislike-color); }
+
+        /* 댓글창 */
+        .comment-section { display: none; background: #222; margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 0.85rem; }
+        .cmt-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .cmt-user { font-weight: bold; color: #ddd; font-size: 0.8rem; min-width: 60px; }
+        .cmt-text { color: #bbb; margin-top: 2px; flex: 1; }
+        .cmt-owner { color: var(--highlight); } 
+
+        /* [앨범] */
+        .album-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+        .photo-item { aspect-ratio: 1/1; background: #222; position: relative; overflow: hidden; }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        /* NSFW 스타일 제거됨 */
+
+        /* [모달 공통] */
+        .modal { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); z-index: 2000; 
+            display: none; align-items: center; justify-content: center; 
+            backdrop-filter: blur(5px);
+        }
+        
+        /* 프로필 시트 */
+        .profile-sheet { background: #1f1f1f; width: 90%; max-width: 400px; border-radius: 16px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); max-height: 80vh; overflow-y: auto; }
+        .sheet-header { font-size: 1.2rem; font-weight: bold; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .p-row { display: flex; margin-bottom: 12px; font-size: 0.95rem; }
+        .p-key { width: 100px; color: #888; flex-shrink: 0; }
+        .p-val { color: #eee; flex: 1; line-height: 1.4; }
+
+        /* 라이트박스 (이미지 확대) */
+        .lightbox-container {
+            position: relative;
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .lightbox-img { 
+            max-width: 100%; max-height: 90%; 
+            object-fit: contain; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .lightbox-close-btn {
+            position: absolute; top: 20px; right: 20px;
+            color: white; font-size: 2rem; font-weight: bold;
+            cursor: pointer; z-index: 2100;
+            text-shadow: 0 0 5px black;
+        }
+
+        /* [모달 - Trande 앱] */
+        .app-modal { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; z-index: 3000; display: none; 
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        
+        .trande-top-bar {
+            position: absolute; top: 20px; left: 0; width: 100%;
+            padding: 0 20px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .trande-icon-btn { font-size: 1.5rem; color: #666; cursor: pointer; padding: 10px; }
+        
+        .spiral-visual {
+            width: 200px; height: 200px; border-radius: 50%;
+            background: conic-gradient(from 0deg, black, var(--trande-purple), black);
+            position: relative; margin-bottom: 30px;
+            filter: blur(2px); opacity: 0.5; transition: 1s;
+        }
+        .spiral-visual.active { animation: spin 2s linear infinite; opacity: 1; filter: blur(0px); box-shadow: 0 0 30px var(--trande-purple); }
+        .spiral-visual::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 180px; height: 180px; background: black; border-radius: 50%; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        .trande-btn {
+            background: transparent; border: 2px solid var(--trande-purple); color: white;
+            padding: 15px 40px; border-radius: 30px; font-size: 1.1rem; cursor: pointer;
+            transition: 0.3s;
+        }
+        .trande-btn:hover { background: var(--trande-purple); box-shadow: 0 0 20px var(--trande-purple); }
+
+        /* 설명서 뷰 */
+        #trande-guide-view {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fdf6e3; z-index: 3100; display: none;
+            overflow-y: auto; text-align: center;
+        }
+        #trande-guide-view img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+        .guide-close {
+            position: fixed; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.5); color: white;
+            border: none; padding: 10px 15px; border-radius: 20px;
+            cursor: pointer; font-weight: bold;
+        }
+
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <div id="app-container">
+        <header class="app-header">
+            <div class="logo"><span>▶</span> SsinTube</div>
+            <div class="icons">
+                <div class="icon-btn" onclick="openTrande()" style="font-size:1.5rem;">
+                    🌀
+                </div>
+                <div class="icon-btn" onclick="toggleSearch()">
+                    🔍
+                    <div id="search-dropdown" class="dropdown-menu" style="width:250px; right:-80px;">
+                        <div style="padding:10px; color:#aaa; font-size:0.8rem;">최근 검색어</div>
+                        <div class="dd-item">JUJU_ 얼굴</div>
+                        <div class="dd-item">이터널리턴 블레어 루트</div>
+                        <div class="dd-item">주해진 복근</div>
+                        <div class="dd-item">부산 사투리 남자</div>
+                    </div>
+                </div>
+                <div class="icon-btn" onclick="toggleNoti()">
+                    🔔
+                    <div id="noti-badge" class="badge">3</div>
+                    <div id="noti-dropdown" class="dropdown-menu">
+                        <div class="dd-item">
+                            <img src="https://tra2.ssina.uk/6.webp" width="30" style="border-radius:50%">
+                            <div><b>JUJU_</b>님이 커뮤니티에 글을 남겼습니다.</div>
+                        </div>
+                        <div class="dd-item">
+                            <img src="https://tra2.ssina.uk/6.webp" width="30" style="border-radius:50%">
+                            <div><b>JUJU_</b>님이 대댓글을 남겼습니다.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="scroll-area" class="content-view">
+            
+            <div class="channel-info-area">
+                <div class="profile-pic" onclick="openProfile()">
+                    <img src="https://tra2.ssina.uk/6.webp" alt="Profile">
+                </div>
+                <div class="info-text">
+                    <div class="ch-name">JUJU_ <span style="font-size:0.8rem; color:#aaa;">✅</span></div>
+                    <div class="ch-sub">구독자 4.21만명 • 동영상 162개</div>
+                    <div class="more-btn" onclick="openProfile()">정보 자세히 보기 ></div>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <button id="sub-btn" class="btn-sub active" onclick="toggleSub()">구독중 🔔</button>
+                <button class="btn-join" onclick="window.open('https://share.crack.wrtn.ai/nrfe2x', '_blank')">가입</button>
+            </div>
+
+            <div class="tabs-wrapper">
+                <div class="tabs">
+                    <div class="tab-item active" onclick="setTab('video')">동영상</div>
+                    <div class="tab-item" onclick="setTab('live')">라이브</div>
+                    <div class="tab-item" onclick="setTab('community')">커뮤니티</div>
+                    <div class="tab-item secret" onclick="setTab('album')">🔒 앨범</div>
+                </div>
+            </div>
+
+            <div id="view-video" style="display:block;">
+                <div class="video-item">
+                    <div class="thumb-box"><img src="https://tra2.ssina.uk/16.webp"><div class="time-badge">12:44</div></div>
+                    <div class="vid-info"><img src="https://tra2.ssina.uk/6.webp"><div class="vid-meta"><h3>이터널리턴 억까 레전드 (샷건 주의 🤬)</h3><p>JUJU_ • 조회수 15만회 • 2일 전</p></div></div>
+                </div>
+                <div class="video-item">
+                    <div class="thumb-box"><img src="https://tra2.ssina.uk/29.webp"><div class="time-badge">08:12</div></div>
+                    <div class="vid-info"><img src="https://tra2.ssina.uk/6.webp"><div class="vid-meta"><h3>3대 500 치는 남자의 햄버거 최대 몇개? 🍔</h3><p>JUJU_ • 조회수 8.2만회 • 5일 전</p></div></div>
+                </div>
+                <div class="video-item">
+                    <div class="thumb-box"><img src="https://tra2.ssina.uk/1.webp"><div class="time-badge">04:30</div></div>
+                    <div class="vid-info"><img src="https://tra2.ssina.uk/6.webp"><div class="vid-meta"><h3>구독자 4만 기념.. 머리 쓰담쓰담 VR (?)</h3><p>JUJU_ • 조회수 21만회 • 1주 전</p></div></div>
+                </div>
+                <div class="video-item">
+                    <div class="thumb-box"><img src="https://tra2.ssina.uk/20.webp"><div class="time-badge">23:01</div></div>
+                    <div class="vid-info"><img src="https://tra2.ssina.uk/6.webp"><div class="vid-meta"><h3>살려주이소... 공포게임 하다가 기절할 뻔함 😱</h3><p>JUJU_ • 조회수 33만회 • 2주 전</p></div></div>
+                </div>
+                <div class="video-item">
+                    <div class="thumb-box"><img src="https://tra2.ssina.uk/40.webp"><div class="time-badge">05:55</div></div>
+                    <div class="vid-info"><img src="https://tra2.ssina.uk/6.webp"><div class="vid-meta"><h3>[Vlog] 주인보다 인기 많은 고양이 '리오'의 하루 🐱</h3><p>JUJU_ • 조회수 51만회 • 3주 전</p></div></div>
+                </div>
+                <div class="video-item">
+                    <div class="thumb-box"><img src="https://tra2.ssina.uk/2.webp"><div class="time-badge">15:20</div></div>
+                    <div class="vid-info"><img src="https://tra2.ssina.uk/6.webp"><div class="vid-meta"><h3>ASMR 아님.. 그냥 마이크 가까이서 사투리 쓰기</h3><p>JUJU_ • 조회수 92만회 • 1개월 전</p></div></div>
+                </div>
+                <div class="video-item">
+                    <div class="thumb-box"><img src="https://tra2.ssina.uk/8.webp"><div class="time-badge">04:10</div></div>
+                    <div class="vid-info"><img src="https://tra2.ssina.uk/6.webp"><div class="vid-meta"><h3>[Cover] 너에게로 (방구석 라이브 ver.) 🎤</h3><p>JUJU_ • 조회수 11만회 • 2개월 전</p></div></div>
+                </div>
+            </div>
+
+            <div id="view-live" style="display:none;">
+                <div class="live-bg-container">
+                    <div class="live-bg-img"></div>
+                    <div class="live-content">
+                        <div style="background:#cc0000; display:inline-block; padding:5px 15px; border-radius:5px; font-weight:bold; margin-bottom:15px;">OFFLINE</div>
+                        <h2 style="margin:0; text-shadow:0 0 10px black;">방송 준비 중</h2>
+                        <p style="color:#ddd; font-size:0.9rem; margin-top:10px; text-shadow:0 0 5px black;">
+                            매주 월/수/금/일 오후 6시!<br>
+                            잠시 후 시작됩니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-community" style="display:none;">
+                <div class="post-card">
+                    <div class="post-header"><img src="https://tra2.ssina.uk/6.webp"><div><b>JUJU_</b><br><span style="font-size:0.8rem; color:#aaa;">3시간 전</span></div></div>
+                    <div class="post-text">마, 다들 밥 뭇나? 리오가 랜선 뽑아서 10분 늦는다! 딱 기다리라!</div>
+                    <div class="post-actions">
+                        <div class="act-btn" onclick="toggleLike(this)">👍 <span class="count">1.2천</span></div>
+                        <div class="act-btn" onclick="toggleDislike(this)">👎</div>
+                        <div class="act-btn" onclick="toggleComment('c1')">💬 320</div>
+                    </div>
+                    <div id="c1" class="comment-section">
+                        <div class="cmt-row"><div class="cmt-user">냥냥펀치</div><div class="cmt-text">오빠 얼른 와여 현기증 난단 말이에요</div></div>
+                        <div class="cmt-row"><div class="cmt-user cmt-owner">JUJU_</div><div class="cmt-text">간다 가!! 컴퓨터 키고 있다!!</div></div>
+                    </div>
+                </div>
+                <div class="post-card">
+                    <div class="post-header"><img src="https://tra2.ssina.uk/6.webp"><div><b>JUJU_</b><br><span style="font-size:0.8rem; color:#aaa;">1일 전</span></div></div>
+                    <div class="post-text">[휴방 공지] 목이 가서 오늘은 쉽니다.. 내 꿈 꿔라</div>
+                    <div class="post-actions">
+                        <div class="act-btn" onclick="toggleLike(this)">👍 <span class="count">2.5천</span></div>
+                        <div class="act-btn" onclick="toggleDislike(this)">👎</div>
+                        <div class="act-btn" onclick="toggleComment('c2')">💬 512</div>
+                    </div>
+                    <div id="c2" class="comment-section">
+                        <div class="cmt-row"><div class="cmt-user">U_Lover</div><div class="cmt-text">아프지마세요 ㅠㅠ 푹 쉬세요</div></div>
+                    </div>
+                </div>
+                <div class="post-card">
+                    <div class="post-header"><img src="https://tra2.ssina.uk/6.webp"><div><b>JUJU_</b><br><span style="font-size:0.8rem; color:#aaa;">2일 전</span></div></div>
+                    <div class="post-text">우리집 고양이 빚 갚으리오 씨... 내 방송 의자 다 뜯어놨다...<br>이거 우짜면 좋노... 하... 귀여워서 봐준다.</div>
+                    <div class="post-actions">
+                        <div class="act-btn" onclick="toggleLike(this)">👍 <span class="count">3.1천</span></div>
+                        <div class="act-btn" onclick="toggleDislike(this)">👎</div>
+                        <div class="act-btn" onclick="toggleComment('c3')">💬 401</div>
+                    </div>
+                    <div id="c3" class="comment-section">
+                        <div class="cmt-row"><div class="cmt-user">집사101</div><div class="cmt-text">리오님은 무죄입니다</div></div>
+                        <div class="cmt-row"><div class="cmt-user cmt-owner">JUJU_</div><div class="cmt-text">내 의자는 죄가 있나 ㅠㅠ</div></div>
+                    </div>
+                </div>
+                <div class="post-card">
+                    <div class="post-header"><img src="https://tra2.ssina.uk/6.webp"><div><b>JUJU_</b><br><span style="font-size:0.8rem; color:#aaa;">3일 전 (일요일)</span></div></div>
+                    <div class="post-text">예배 드리고 오는 길인데 날씨 억수로 좋네.<br>다들 좋은 주말 보내고 있나?<br>내 기도가 너한테도 닿았으면 좋겠네. 🙏</div>
+                    <div class="post-actions">
+                        <div class="act-btn" onclick="toggleLike(this)">👍 <span class="count">1.8천</span></div>
+                        <div class="act-btn" onclick="toggleDislike(this)">👎</div>
+                        <div class="act-btn" onclick="toggleComment('c4')">💬 210</div>
+                    </div>
+                    <div id="c4" class="comment-section">
+                        <div class="cmt-row"><div class="cmt-user">아멘</div><div class="cmt-text">오빠 덕분에 힐링해요</div></div>
+                    </div>
+                </div>
+                <div class="post-card">
+                    <div class="post-header"><img src="https://tra2.ssina.uk/6.webp"><div><b>JUJU_</b><br><span style="font-size:0.8rem; color:#aaa;">4일 전</span></div></div>
+                    <div class="post-text">아니 블레어 버프 좀 해달라꼬!!<br>이게 게임이가!! 😡<br>...그래도 내가 하면 다 이긴다. 방송 봐라.</div>
+                    <div class="post-actions">
+                        <div class="act-btn" onclick="toggleLike(this)">👍 <span class="count">900</span></div>
+                        <div class="act-btn" onclick="toggleDislike(this)">👎</div>
+                        <div class="act-btn" onclick="toggleComment('c5')">💬 150</div>
+                    </div>
+                    <div id="c5" class="comment-section">
+                        <div class="cmt-row"><div class="cmt-user">블레어장인</div><div class="cmt-text">형 실력 문제 아님? ㅋㅋ</div></div>
+                        <div class="cmt-row"><div class="cmt-user cmt-owner">JUJU_</div><div class="cmt-text">마! 방송 와서 1:1 뜨자!</div></div>
+                    </div>
+                </div>
+                <div class="post-card">
+                    <div class="post-header"><img src="https://tra2.ssina.uk/6.webp"><div><b>JUJU_</b><br><span style="font-size:0.8rem; color:#aaa;">5일 전 (새벽 3시)</span></div></div>
+                    <div class="post-text">방송 끝나고 제로 콜라 한 잔 때리는데...<br>갑자기 니 생각이 나노.<br>잘 자라. 아프지 말고.</div>
+                    <div class="post-actions">
+                        <div class="act-btn" onclick="toggleLike(this)">👍 <span class="count">4.5천</span></div>
+                        <div class="act-btn" onclick="toggleDislike(this)">👎</div>
+                        <div class="act-btn" onclick="toggleComment('c6')">💬 999+</div>
+                    </div>
+                    <div id="c6" class="comment-section">
+                        <div class="cmt-row"><div class="cmt-user">User123</div><div class="cmt-text">헐 오빠 설레게 왜 그래요;;</div></div>
+                        <div class="cmt-row"><div class="cmt-user">망붕렌즈</div><div class="cmt-text">누구 생각?? 혹시.. 그 사람??</div></div>
+                    </div>
+                </div>
+                <div class="post-card">
+                    <div class="post-header"><img src="https://tra2.ssina.uk/6.webp"><div><b>JUJU_</b><br><span style="font-size:0.8rem; color:#aaa;">1주 전</span></div></div>
+                    <div class="post-text">운동 조지고 왔다. 💪<br>오늘따라 땀이 억수로 나네.<br>개운하다! 이따 방송에서 보자.</div>
+                    <div class="post-actions">
+                        <div class="act-btn" onclick="toggleLike(this)">👍 <span class="count">2.2천</span></div>
+                        <div class="act-btn" onclick="toggleDislike(this)">👎</div>
+                        <div class="act-btn" onclick="toggleComment('c7')">💬 330</div>
+                    </div>
+                    <div id="c7" class="comment-section">
+                        <div class="cmt-row"><div class="cmt-user">민트초코</div><div class="cmt-text">와 피지컬 미쳤다... 어깨 실화?</div></div>
+                        <div class="cmt-row"><div class="cmt-user cmt-owner">JUJU_</div><div class="cmt-text">아직 멀었다!</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-album" style="display:none;">
+                <div style="padding:15px; color:#aaa; font-size:0.8rem;">전체 사진 51장</div> <div class="album-grid" id="album-grid"></div>
+            </div>
+
+        </div> 
+    </div>
+
+    <div id="modal-profile" class="modal" onclick="closeModal(event, 'modal-profile')">
+        <div class="profile-sheet">
+            <div class="sheet-header">정보</div>
+            <div class="p-row"><div class="p-key">이름</div><div class="p-val">주해진</div></div>
+            <div class="p-row"><div class="p-key">나이</div><div class="p-val">28세 (99.03.22)</div></div>
+            <div class="p-row"><div class="p-key">신체</div><div class="p-val">184cm</div></div>
+            <div class="p-row"><div class="p-key">MBTI</div><div class="p-val">ENFP</div></div>
+            <div class="p-row"><div class="p-key">직업</div><div class="p-val">게임 스트리머 (이터널리턴)</div></div>
+            <div class="p-row"><div class="p-key">반려묘</div><div class="p-val">레오나르도 빚 갚으리오<br>(2024.7.2, 페르시안, 애칭: 리오)</div></div>
+            <div class="p-row"><div class="p-key">특이사항</div><div class="p-val">독실한 기독교 신자<br>부산 사투리 사용</div></div>
+            <div class="p-row"><div class="p-key">비밀</div><div class="p-val" style="color:#d8b4fe; font-weight:bold;">당신을 짝사랑 중</div></div>
+        </div>
+    </div>
+
+    <div id="modal-lightbox" class="modal">
+        <div class="lightbox-close-btn" onclick="closeLightbox()">✕</div>
+        <div class="lightbox-container" onclick="closeLightbox()">
+            <img id="lb-img" class="lightbox-img" src="">
+        </div>
+    </div>
+
+    <div id="modal-trande" class="app-modal">
+        <div class="trande-top-bar">
+            <div class="trande-icon-btn" onclick="toggleGuide()">?</div>
+            <div class="trande-icon-btn" onclick="closeTrande()">✕</div>
+        </div>
+        
+        <div style="font-size:2rem; font-weight:bold; margin-bottom:50px; color:#fff;">Trande</div>
+        <div class="spiral-visual" id="spiral"></div>
+        <div style="font-family:'Courier New'; color:#888; margin-bottom:20px; font-size:1.5rem;" id="timer">04:00:00</div>
+        <button class="trande-btn" onclick="toggleHypno()">Start Hypnosis</button>
+        <div style="margin-top:30px; color:#444; font-size:0.8rem; text-align:center;">
+            * 주의: 대상의 시선을 맞추세요.<br>종료 시 기억이 소거됩니다.
+        </div>
+        
+        <div id="trande-guide-view">
+            <button class="guide-close" onclick="toggleGuide()">닫기</button>
+            <img src="https://tra2.ssina.uk/a.webp" alt="Guide">
+        </div>
+    </div>
+
+    <script>
+        // 탭 전환
+        function setTab(name) {
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            const activeTab = document.querySelector(`.tab-item[onclick="setTab('${name}')"]`);
+            if(activeTab) activeTab.classList.add('active');
+            document.querySelectorAll('#scroll-area > div[id^="view-"]').forEach(el => el.style.display = 'none');
+            document.getElementById(`view-${name}`).style.display = 'block';
+            const area = document.getElementById('scroll-area');
+            area.style.background = (name === 'album') ? '#000' : '#0f0f0f';
+        }
+
+        // 앨범 생성 (19금 제외 로직 적용)
+        const albumGrid = document.getElementById('album-grid');
+        const baseUrl = "https://tra2.ssina.uk/";
+        for (let i = 1; i <= 62; i++) {
+            // 43번부터 53번까지는 건너뜀
+            if (i >= 43 && i <= 53) {
+                continue;
+            }
+
+            const div = document.createElement('div');
+            div.className = 'photo-item';
+            const img = document.createElement('img');
+            img.src = `${baseUrl}${i}.webp`;
+            img.loading = "lazy";
+
+            // 모든 이미지는 바로 확대
+            div.onclick = function() { openLightbox(img.src); }
+
+            div.appendChild(img);
+            albumGrid.appendChild(div);
+        }
+
+        // 기능 함수들
+        function openProfile() { document.getElementById('modal-profile').style.display = 'flex'; }
+        
+        function openLightbox(src) {
+            document.getElementById('lb-img').src = src;
+            document.getElementById('modal-lightbox').style.display = 'flex';
+        }
+        function closeLightbox() {
+            document.getElementById('modal-lightbox').style.display = 'none';
+        }
+
+        function closeModal(e, id) { if (e.target.id === id) document.getElementById(id).style.display = 'none'; }
+        
+        // 구독 버튼
+        function toggleSub() {
+            const btn = document.getElementById('sub-btn');
+            if (btn.classList.contains('active')) {
+                btn.classList.remove('active'); btn.classList.add('inactive'); btn.innerText = "구독";
+            } else {
+                btn.classList.remove('inactive'); btn.classList.add('active'); btn.innerText = "구독중 🔔";
+            }
+        }
+
+        // 드롭다운 토글
+        function toggleSearch() {
+            const el = document.getElementById('search-dropdown');
+            const noti = document.getElementById('noti-dropdown');
+            noti.style.display = 'none';
+            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+        }
+        function toggleNoti() {
+            const el = document.getElementById('noti-dropdown');
+            const search = document.getElementById('search-dropdown');
+            const badge = document.getElementById('noti-badge');
+            search.style.display = 'none';
+            if (el.style.display === 'block') { el.style.display = 'none'; }
+            else { el.style.display = 'block'; badge.style.display = 'none'; }
+        }
+
+        // 커뮤니티 액션
+        function toggleLike(btn) { btn.classList.toggle('liked'); }
+        function toggleDislike(btn) { btn.classList.toggle('disliked'); }
+        function toggleComment(id) {
+            const section = document.getElementById(id);
+            section.style.display = (section.style.display === 'block') ? 'none' : 'block';
+        }
+
+        // Trande 어플 관련 로직
+        function openTrande() {
+            document.getElementById('modal-trande').style.display = 'flex';
+        }
+        function closeTrande() {
+            document.getElementById('modal-trande').style.display = 'none';
+        }
+        
+        // 설명서 토글
+        function toggleGuide() {
+            const guide = document.getElementById('trande-guide-view');
+            guide.style.display = (guide.style.display === 'block') ? 'none' : 'block';
+        }
+
+        // 최면 타이머
+        let isHypno = false;
+        let timerInterval;
+        let totalTime = 4 * 60 * 60; // 4시간 (초 단위)
+
+        function toggleHypno() {
+            const spiral = document.getElementById('spiral');
+            const btn = document.querySelector('.trande-btn');
+            const timerDisplay = document.getElementById('timer');
+
+            if(!isHypno) {
+                // 시작
+                isHypno = true;
+                spiral.classList.add('active');
+                btn.innerText = "Stop Session";
+                btn.style.borderColor = "#ff5f56";
+                btn.style.color = "#ff5f56";
+                timerDisplay.style.color = "#a855f7";
+                
+                // 타이머 작동
+                timerInterval = setInterval(() => {
+                    if (totalTime > 0) {
+                        totalTime--;
+                        updateTimerDisplay(totalTime);
+                    } else {
+                        clearInterval(timerInterval); // 시간 종료
+                    }
+                }, 1000);
+            } else {
+                // 정지
+                isHypno = false;
+                spiral.classList.remove('active');
+                btn.innerText = "Start Hypnosis";
+                btn.style.borderColor = "#7000ff";
+                btn.style.color = "white";
+                timerDisplay.style.color = "#888";
+                
+                clearInterval(timerInterval);
+                // totalTime = 4 * 60 * 60; // (선택사항) 정지 시 초기화하려면 주석 해제
+                // updateTimerDisplay(totalTime);
+            }
+        }
+
+        function updateTimerDisplay(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            const timerDisplay = document.getElementById('timer');
+            timerDisplay.innerText = 
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>
